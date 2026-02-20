@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+import asyncio
+import aiohttp
+import json
+import random
+import time
+from pathlib import Path
+from faker import Faker
+import logging
+from typing import List, Dict
+import socks
+import socket
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class TelegramMassReporter:
+    def __init__(self, config_path: str = "config.json"):
+        self.fake = Faker()
+        self.config = self.load_config(config_path)
+        self.proxies = self.load_proxies("proxies.txt")
+        self.reports = self.get_report_templates()
+        
+    def load_config(self, path: str) -> Dict:
+        with open(path, 'r') as f:
+            return json.load(f)
+    
+    def load_proxies(self, path: str) -> List[Dict]:
+        proxies = []
+        try:
+            with open(path, 'r') as f:
+                for line in f:
+                    parts = line.strip().split(':')
+                    if len(parts) == 4:
+                        proxies.append({
+                            'ip': parts[0], 'port': parts[1], 
+                            'user': parts[2], 'pass': parts[3],
+                            'proxy_url': f"socks5://{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}"
+                        })
+        except FileNotFoundError:
+            logger.error(f"proxies.txt not found! Get residential proxies first.")
+            exit(1)
+        logger.info(f"Loaded {len(proxies)} residential proxies")
+        return proxies
+    
+    def get_report_templates(self) -> List[Dict]:
+        """Strong 2-line reports that trigger moderator review"""
+        return [
+            # SPAM (Most effective)
+            {
+                "reason": "spam",
+                "text": "This channel posts identical spam messages hourly to thousands of users. Clear commercial spam operation."
+            },
+            # CSAM (Instant review - USE CAREFULLY)
+            {
+                "reason": "child_abuse", 
+                "text": "Channel contains child sexual abuse material. Multiple images/videos of minors."
+            },
+            # ToS Violations
+            {
+                "reason": "violence",
+                "text": "Channel promotes violence/extremism with weapon sales and attack planning posts."
+            },
+            {
+                "reason": "copyright",
+                "text": "Mass distribution of pirated movies/software. Direct download links to copyrighted material."
+            },
+            {
+                "reason": "scam",
+                "text": "Crypto investment scam promising 1000% returns. Fake trading signals and wallet drains."
+            },
+            {
+                "reason": "illegal_drugs",
+                "text": "Drug marketplace selling cocaine, MDMA with shipping details and vendor reviews."
+            },
+            {
+                "reason": "personal_details",
+                "text": "Doxxing private individuals with phone numbers, addresses, and family photos."
+            }
+        ]
+    
+    def get_random_headers(self) -> Dict:
+        uas = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ]
+        return {
+            'User-Agent': random.choice(uas),
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://web.telegram.org/',
+            'Origin': 'https://web.telegram.org',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    
+    async def report_single(self, session: aiohttp.ClientSession, proxy: Dict, 
+                           target_group: str, report_template: Dict) -> bool:
+        """Send single report via proxy"""
+        timeout = aiohttp.ClientTimeout(total=30)
+        connector = aiohttp.TCPConnector(
+            socks_connectors=[socks.SOCKS5 | socks.SOCKS4] if proxy['proxy_url'].startswith('socks') else None
+        )
+        
+        proxy_auth = aiohttp.BasicAuth(proxy['user'], proxy['pass'])
+        
+        try:
+            async with aiohttp.ClientSession(
+                connector=connector, timeout=timeout
+            ) as proxy_session:
+                payload = {
+                    "chat_id": target_group,
+                    "reason": report_template["reason"],
+                    "text": report_template["text"],
+                    "message_ids": [str(random.randint(1, 100000))]
+                }
+                
+                async with proxy_session.post(
+                    'https://telegram.org/tnip',
+                    json=payload,
+                    headers=self.get_random_headers(),
+                    proxy=proxy['proxy_url'],
+                    auth=proxy_auth
+                ) as resp:
+                    success = resp.status in [200, 204]
+                    logger.info(f"✅ {proxy['ip']}: {report_template['reason']} -> {success}")
+                    return success
+        except Exception as e:
+            logger.warning(f"❌ {proxy['ip']}: {str(e)[:50]}")
+            return False
+    
+    async def mass_campaign(self, target_group: str, proxy_count: int = 50, 
+                           delay_range: tuple = (60, 180)):
+        """Execute distributed reporting campaign"""
+        logger.info(f"🚀 Starting campaign against {target_group}")
+        logger.info(f"Using {min(proxy_count, len(self.proxies))} proxies")
+        
+        session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=45))
+        tasks = []
+        
+        for i in range(proxy_count):
+            proxy = random.choice(self.proxies)
+            report = random.choice(self.reports)
+            
+            # Humanized timing
+            delay = random.uniform(*delay_range)
+            
+            task = asyncio.create_task(
+                self.report_single(session, proxy, target_group, report)
+            )
+            tasks.append((task, delay))
+            
+            # Stagger launches
+            await asyncio.sleep(random.uniform(5, 15))
+        
+        # Execute with delays
+        for task, delay in tasks:
+            await task
+            await asyncio.sleep(delay)
+        
+        await session.close()
+        logger.info("✅ Campaign complete")
+
+# CLI Interface
+async def main():
+    reporter = TelegramMassReporter("accounts.json")
+    
+    target = input("🎯 Enter target group/channel (@username or t.me/link): ").strip()
+    if not target.startswith('@') and not target.startswith('t.me/'):
+        target = f"@{target}"
+    
+    proxy_count = int(input("🔢 Number of proxies to use (default 50): ") or 50)
+    
+    print("\n⚠️  STRONG REPORTS WILL BE SENT:")
+    for i, r in enumerate(reporter.reports[:3], 1):  # Show first 3
+        print(f"  {i}. {r['reason'].upper()}: {r['text']}")
+    
+    confirm = input("\n🚨 CONFIRM MASS REPORT? (yes/no): ").lower()
+    if confirm == 'yes':
+        await reporter.mass_campaign(target, proxy_count)
+    else:
+        print("Aborted.")
+
+if __name__ == "__main__":
+    asyncio.run(main())

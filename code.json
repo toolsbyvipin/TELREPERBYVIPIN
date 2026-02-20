@@ -1,0 +1,20 @@
+[
+  {
+    "phone": "+1234567890",
+    "api_id": "12345678",
+    "api_hash": "your_api_hash_here",
+    "session_name": "account1"
+  },
+  {
+    "phone": "+0987654321", 
+    "api_id": "87654321",
+    "api_hash": "your_api_hash_2",
+    "session_name": "account2"
+  },
+  {
+    "phone": "+1122334455",
+    "api_id": "11223344",
+    "api_hash": "your_api_hash_3", 
+    "session_name": "account3"
+  }
+]
