@@ -1,3 +1,5 @@
+RUN THESE COMMANDS ONE BY ONE 
+
 chmod +x code.python
 python3 code.python
 
