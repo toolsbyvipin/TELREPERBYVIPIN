@@ -1,5 +1,13 @@
-RUN THESE COMMANDS ONE BY ONE 
+# TELEGRAM MASS REPORTING TOOL
 
+A TOOL FOR MASS REPORTING ON TELEGRAM GROUPS AND CHANNELS 
+
+## INSTALLATION  
+
+```
+git clone https://github.com/toolsbyvipin/TELREPERBYVIPIN.git
+```
+```
 chmod +x code.python
 python3 code.python
 
@@ -9,6 +17,7 @@ pip3 install PySocks
 
 pip3 install requests  # if it complains about requests
 pip3 install fake-useragent  # for rotating user agents
+```
 
 
 
