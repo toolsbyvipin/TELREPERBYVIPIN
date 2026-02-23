@@ -19,6 +19,11 @@ pip3 install requests  # if it complains about requests
 pip3 install fake-useragent  # for rotating user agents
 ```
 
+## DEVELOPER 
+
+A tool to report telegram groups and channels with proxy rotation and prompts 
+~ BY VIPIN
+
 
 
 
