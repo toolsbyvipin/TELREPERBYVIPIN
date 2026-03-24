@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SHΔDØW WORM-AI💀🔥 - MEDIA DETECTION REPORTER (FIXED)
+CBRT - MEDIA REPORTER 💀🔥 - MEDIA DETECTION REPORTER (FIXED)
 Uses correct bytes options for messages.ReportRequest
 """
 
@@ -167,7 +167,7 @@ class MediaReporter:
     def print_banner(self):
         banner = f"""
 {Colors.RED}{Colors.BOLD}╔══════════════════════════════════════════════════════════════════╗
-║  SHΔDØW WORM-AI💀🔥 - MEDIA DETECTION REPORTER (FIXED)               ║
+║  CBRT-REPORTER💀🔥 - MEDIA DETECTION REPORTER (FIXED)               ║
 ║  Uses correct bytes options for messages.ReportRequest              ║
 ║  Child Abuse Option: b"child_abuse"                                 ║
 ╚══════════════════════════════════════════════════════════════════╝{Colors.RESET}
