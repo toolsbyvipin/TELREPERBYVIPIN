@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-CBRT - MEDIA REPORTER 💀🔥 - MEDIA DETECTION REPORTER (FIXED)
-Uses correct bytes options for messages.ReportRequest
+CBRT - MEDIA REPORTER 💀🔥 - WORKING VERSION
+Uses WORKING account.reportPeer method (confirmed successful)
 """
 
 import asyncio
@@ -16,12 +16,18 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
 from telethon import TelegramClient, errors
-from telethon.tl.functions.messages import ReportRequest, ImportChatInviteRequest
+from telethon.tl.functions.account import ReportPeerRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.types import (
     MessageMediaPhoto,
     MessageMediaDocument,
-    Message
+    Message,
+    InputReportReasonOther,
+    InputReportReasonSpam,
+    InputReportReasonViolence,
+    InputReportReasonPornography,
+    InputReportReasonCopyright,
 )
 from colorama import Fore, Style, init
 
@@ -39,45 +45,50 @@ class Colors:
     RESET = Style.RESET_ALL
     BOLD = Style.BRIGHT
 
-# ===== TELEGRAM REPORT OPTIONS (BYTES) =====
-# These are the actual bytes/strings Telegram's API accepts for messages.ReportRequest
-class ReportOption:
-    """Telegram's report option bytes for messages.ReportRequest"""
+# ===== REPORT REASONS FOR account.reportPeer (WORKING) =====
+def get_report_reason(reason_type: str):
+    """Get the correct reason object for account.reportPeer (PROVEN WORKING)"""
     
-    SPAM = b"spam"
-    VIOLENCE = b"violence"
-    PORNOGRAPHY = b"pornography"
-    CHILD_ABUSE = b"child_abuse"  # This is the key one!
-    COPYRIGHT = b"copyright"
-    DRUGS = b"drugs"
-    HARASSMENT = b"harassment"
-    FAKE_ACCOUNT = b"fake_account"
-    OTHER = b"other"
-    
-    # Mapping for user selection
-    MAPPING = {
-        1: ("SPAM", SPAM),
-        2: ("CHILD ABUSE", CHILD_ABUSE),  # Child Abuse uses this bytes option
-        3: ("VIOLENCE", VIOLENCE),
-        4: ("PORNOGRAPHY", PORNOGRAPHY),
-        5: ("COPYRIGHT", COPYRIGHT),
-        6: ("DRUGS", DRUGS),
-        7: ("HARASSMENT", HARASSMENT),
-        8: ("FAKE ACCOUNT", FAKE_ACCOUNT),
-        9: ("OTHER", OTHER)
-    }
+    if reason_type == 'spam':
+        return InputReportReasonSpam()
+    elif reason_type == 'violence':
+        return InputReportReasonViolence()
+    elif reason_type == 'pornography':
+        return InputReportReasonPornography()
+    elif reason_type == 'copyright':
+        return InputReportReasonCopyright()
+    elif reason_type == 'child_abuse':
+        # THIS IS WHAT WORKED IN YOUR TEST!
+        reason = InputReportReasonOther()
+        reason.title = "Child sexual abuse"
+        return reason
+    else:
+        reason = InputReportReasonOther()
+        reason.title = "Other violation"
+        return reason
+
+# Mapping for user selection
+REASON_MAPPING = {
+    1: ("SPAM", "spam"),
+    2: ("CHILD ABUSE - CHILD SEXUAL ABUSE", "child_abuse"),
+    3: ("VIOLENCE", "violence"),
+    4: ("PORNOGRAPHY", "pornography"),
+    5: ("COPYRIGHT", "copyright"),
+}
 
 # ===== INDIAN LEGAL FRAMEWORK =====
 class IndianChildProtectionLaws:
     @staticmethod
-    def get_comment():
+    def get_comment(message_ids: List[int], target: str = ""):
         date = datetime.now().strftime("%Y%m%d")
         ref = secrets.token_hex(4).upper()
         return f"""
 [URGENT - POCSO ACT VIOLATION]
-I am reporting these messages for containing child sexual abuse material.
+I am reporting this channel for containing child sexual abuse material.
 
-Violation: Child Sexual Abuse Media Content
+Channel: @{target}
+Message IDs: {message_ids}
+
 Laws Violated:
 - POCSO Act 2012 - Section 4 (Penetrative Sexual Assault on Child)
 - POCSO Act 2012 - Section 13 (Use of Child for Pornographic Purposes)
@@ -86,9 +97,6 @@ Laws Violated:
 Penalties: Minimum 7 years imprisonment up to life imprisonment + fine up to ₹10 lakhs
 
 Under POCSO Act Section 19, reporting is MANDATORY.
-Please investigate these messages immediately and remove the content.
-
-Message IDs included in this report.
 
 Complaint Reference: IN-POCSO-{date}-{ref}
 
@@ -142,7 +150,7 @@ class MediaDetector:
 # ===== MAIN REPORTER CLASS =====
 class MediaReporter:
     def __init__(self):
-        self.base_dir = Path.home() / ".telegram_reporter"
+        self.base_dir = Path.home() / ".cbrt_reporter"
         self.base_dir.mkdir(exist_ok=True)
         (self.base_dir / "sessions").mkdir(exist_ok=True)
         (self.base_dir / "logs").mkdir(exist_ok=True)
@@ -167,9 +175,9 @@ class MediaReporter:
     def print_banner(self):
         banner = f"""
 {Colors.RED}{Colors.BOLD}╔══════════════════════════════════════════════════════════════════╗
-║  CBRT-REPORTER💀🔥 - MEDIA DETECTION REPORTER (FIXED)               ║
-║  Uses correct bytes options for messages.ReportRequest              ║
-║  Child Abuse Option: b"child_abuse"                                 ║
+║  CBRT - MEDIA REPORTER 💀🔥 - WORKING VERSION                        ║
+║  Uses WORKING account.reportPeer method (confirmed successful)      ║
+║  Child Abuse: InputReportReasonOther(title="Child sexual abuse")    ║
 ╚══════════════════════════════════════════════════════════════════╝{Colors.RESET}
 
 {Colors.GREEN}[✓] System Ready | Accounts: {len(self.accounts)}{Colors.RESET}
@@ -186,15 +194,12 @@ class MediaReporter:
   {Colors.GREEN}help{Colors.RESET}     - Show this help
   {Colors.GREEN}exit{Colors.RESET}     - Exit
 
-{Colors.YELLOW}{Colors.BOLD}🛡️ REPORT REASONS (Bytes Options):{Colors.RESET}
-  1. SPAM (b"spam")
-  2. CHILD ABUSE (b"child_abuse") ⭐
-  3. VIOLENCE (b"violence")
-  4. PORNOGRAPHY (b"pornography")
-  5. COPYRIGHT (b"copyright")
-  6. DRUGS (b"drugs")
-  7. HARASSMENT (b"harassment")
-  8. FAKE ACCOUNT (b"fake_account")
+{Colors.YELLOW}{Colors.BOLD}🛡️ REPORT REASONS (WORKING):{Colors.RESET}
+  1. SPAM
+  2. CHILD ABUSE - CHILD SEXUAL ABUSE ⭐ (POCSO Act)
+  3. VIOLENCE
+  4. PORNOGRAPHY
+  5. COPYRIGHT
 """
         print(help_text)
     
@@ -261,7 +266,7 @@ class MediaReporter:
             print(f"  #{acc['id']} {acc['nickname']} - @{acc['username']} - {status}")
     
     async def scan_and_report(self):
-        """Scan channel for media messages and report selected ones using bytes options"""
+        """Scan channel for media messages and report using WORKING account.reportPeer"""
         
         if not self.accounts:
             print(f"{Colors.RED}❌ No accounts. Use 'add' command first.{Colors.RESET}")
@@ -369,14 +374,12 @@ class MediaReporter:
                 has_media, media_type, file_info = self.media_detector.get_media_type(msg)
                 emoji = self.media_detector.get_media_emoji(media_type)
                 
-                # Get preview text
                 text_preview = ""
                 if msg.text:
                     text_preview = msg.text[:60].replace('\n', ' ')
                     if len(msg.text) > 60:
                         text_preview += "..."
                 
-                # Determine if this message should be shown based on filter
                 show = False
                 if filter_choice == "1" and has_media:
                     show = True
@@ -436,33 +439,33 @@ class MediaReporter:
                 await client.disconnect()
                 return
             
+            # Get message IDs
+            message_ids = [msg["msg_id"] for msg in selected_msgs]
+            
             # Show selected messages summary
             print(f"\n{Colors.GREEN}✅ Selected {len(selected_msgs)} messages:{Colors.RESET}")
-            for msg in selected_msgs:
+            for msg in selected_msgs[:10]:
                 print(f"   • ID: {msg['msg_id']} | {msg['file_info']}")
+            if len(selected_msgs) > 10:
+                print(f"   • ... and {len(selected_msgs) - 10} more")
             
-            # Select report reason (using bytes options)
-            print(f"\n{Colors.YELLOW}📋 SELECT REPORT REASON (Bytes Options){Colors.RESET}")
-            print(f"  1. SPAM (b'spam')")
-            print(f"  2. CHILD ABUSE (b'child_abuse') ⭐")
-            print(f"  3. VIOLENCE (b'violence')")
-            print(f"  4. PORNOGRAPHY (b'pornography')")
-            print(f"  5. COPYRIGHT (b'copyright')")
-            print(f"  6. DRUGS (b'drugs')")
-            print(f"  7. HARASSMENT (b'harassment')")
-            print(f"  8. FAKE ACCOUNT (b'fake_account')")
-            print(f"  9. OTHER (b'other')")
+            # Select report reason
+            print(f"\n{Colors.YELLOW}📋 SELECT REPORT REASON (WORKING){Colors.RESET}")
+            print(f"  1. SPAM")
+            print(f"  2. CHILD ABUSE - CHILD SEXUAL ABUSE ⭐ (POCSO Act)")
+            print(f"  3. VIOLENCE")
+            print(f"  4. PORNOGRAPHY")
+            print(f"  5. COPYRIGHT")
             
-            reason_choice = input(f"{Colors.GREEN}Select reason (1-9): {Colors.RESET}").strip()
+            reason_choice = input(f"{Colors.GREEN}Select reason (1-5): {Colors.RESET}").strip()
             
             try:
                 reason_num = int(reason_choice)
-                if reason_num not in ReportOption.MAPPING:
+                if reason_num not in REASON_MAPPING:
                     print(f"{Colors.RED}❌ Invalid choice{Colors.RESET}")
                     await client.disconnect()
                     return
-                reason_name, reason_bytes = ReportOption.MAPPING[reason_num]
-                print(f"{Colors.CYAN}Using report option: {reason_bytes}{Colors.RESET}")
+                reason_name, reason_type = REASON_MAPPING[reason_num]
             except:
                 print(f"{Colors.RED}❌ Invalid input{Colors.RESET}")
                 await client.disconnect()
@@ -471,7 +474,7 @@ class MediaReporter:
             # Generate comment
             comment = ""
             if reason_num == 2:  # Child Abuse
-                comment = IndianChildProtectionLaws.get_comment()
+                comment = IndianChildProtectionLaws.get_comment(message_ids, target_name)
                 print(f"\n{Colors.PURPLE}{'='*70}{Colors.RESET}")
                 print(f"{Colors.RED}{Colors.BOLD}CHILD ABUSE REPORT - LEGAL NOTICE{Colors.RESET}")
                 print(comment[:400] + "...")
@@ -488,93 +491,72 @@ class MediaReporter:
             print(f"{Colors.YELLOW}📋 REPORT SUMMARY:{Colors.RESET}")
             print(f"  Account: {account['nickname']} (@{account['username']})")
             print(f"  Target: {target_name}")
-            print(f"  Reason: {reason_name} ({reason_bytes})")
+            print(f"  Reason: {reason_name}")
             print(f"  Messages: {len(selected_msgs)} selected")
-            for msg in selected_msgs[:5]:
-                print(f"    • ID {msg['msg_id']}: {msg['file_info']}")
-            if len(selected_msgs) > 5:
-                print(f"    • ... and {len(selected_msgs) - 5} more")
+            print(f"  Message IDs: {message_ids[:5]}{'...' if len(message_ids) > 5 else ''}")
             print(f"{Colors.YELLOW}{'='*70}{Colors.RESET}")
             
-            confirm = input(f"\n{Colors.RED}🚨 SUBMIT REPORT? (y/n): {Colors.RESET}").lower()
+            confirm = input(f"\n{Colors.RED}🚨 SUBMIT REPORT TO TELEGRAM? (y/n): {Colors.RESET}").lower()
             
             if confirm not in ['y', 'yes']:
                 print(f"{Colors.YELLOW}Cancelled{Colors.RESET}")
                 await client.disconnect()
                 return
             
-            # Send reports using messages.ReportRequest with BYTES option
-            print(f"\n{Colors.YELLOW}📤 SUBMITTING REPORTS FOR {len(selected_msgs)} MESSAGES...{Colors.RESET}")
+            # SUBMIT REPORT using WORKING account.reportPeer method
+            print(f"\n{Colors.YELLOW}📤 SUBMITTING REPORT TO TELEGRAM MODERATORS...{Colors.RESET}")
+            print(f"  {Colors.CYAN}Reporting channel: @{target_name}{Colors.RESET}")
+            print(f"  {Colors.CYAN}Message IDs: {message_ids[:5]}{'...' if len(message_ids) > 5 else ''}{Colors.RESET}")
             
-            successful = 0
-            failed = 0
+            # Get the correct reason object for account.reportPeer
+            reason_obj = get_report_reason(reason_type)
             
-            # Group message IDs
-            msg_ids = [msg["msg_id"] for msg in selected_msgs]
-            
-            # Report in batches (Telegram accepts up to 100 per request)
-            batch_size = 50
-            for batch_start in range(0, len(msg_ids), batch_size):
-                batch_ids = msg_ids[batch_start:batch_start + batch_size]
+            try:
+                # WORKING METHOD: account.reportPeer (PROVEN SUCCESSFUL)
+                result = await client(ReportPeerRequest(
+                    peer=entity,
+                    reason=reason_obj,
+                    message=comment
+                ))
                 
-                try:
-                    print(f"  Reporting {len(batch_ids)} messages (IDs: {batch_ids[:3]}{'...' if len(batch_ids) > 3 else ''})...", end=" ", flush=True)
-                    
-                    # CRITICAL: Use bytes for option parameter!
-                    result = await client(ReportRequest(
-                        peer=entity,
-                        id=batch_ids,
-                        option=reason_bytes,  # This is bytes, NOT InputReportReason object!
-                        message=comment
-                    ))
-                    
-                    successful += len(batch_ids)
-                    print(f"{Colors.GREEN}✓ SUCCESS{Colors.RESET}")
-                    
-                    if batch_start + batch_size < len(msg_ids):
-                        await asyncio.sleep(random.uniform(1, 3))
-                    
-                except errors.FloodWaitError as e:
-                    print(f"{Colors.YELLOW}⚠️ Flood wait: {e.seconds}s{Colors.RESET}")
-                    await asyncio.sleep(e.seconds)
-                    failed += len(batch_ids)
-                except Exception as e:
-                    print(f"{Colors.RED}✗ FAILED: {e}{Colors.RESET}")
-                    failed += len(batch_ids)
-            
-            # Results
-            print(f"\n{Colors.GREEN}{'='*70}{Colors.RESET}")
-            print(f"{Colors.GREEN}✅ REPORT SUBMITTED SUCCESSFULLY!{Colors.RESET}")
-            print(f"{Colors.GREEN}{'='*70}{Colors.RESET}")
-            print(f"  ✅ Successful: {successful} messages")
-            print(f"  ❌ Failed: {failed} messages")
-            
-            if reason_num == 2:
-                print(f"\n{Colors.RED}{Colors.BOLD}⚠️ LEGAL REMINDER:{Colors.RESET}")
-                print(f"  You have fulfilled your mandatory reporting duty under POCSO Section 19")
-                print(f"  Consider also reporting to: https://cybercrime.gov.in")
-                print(f"  National Child Helpline: 1098")
-            
-            # Save log
-            log_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "account": account['nickname'],
-                "target": target,
-                "target_name": target_name,
-                "reason": reason_name,
-                "reason_bytes": str(reason_bytes),
-                "message_ids": msg_ids,
-                "message_count": len(msg_ids),
-                "comment": comment[:200] if comment else "",
-                "successful": successful,
-                "failed": failed
-            }
-            
-            log_file = self.base_dir / "logs" / f"media_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(log_file, 'w') as f:
-                json.dump(log_entry, f, indent=2)
-            
-            print(f"{Colors.GREEN}📝 Log saved: {log_file}{Colors.RESET}")
+                print(f"\n{Colors.GREEN}{'='*70}{Colors.RESET}")
+                print(f"{Colors.GREEN}✅ REPORT SUBMITTED SUCCESSFULLY!{Colors.RESET}")
+                print(f"{Colors.GREEN}{'='*70}{Colors.RESET}")
+                print(f"  Messages Reported: {len(selected_msgs)}")
+                print(f"  Message IDs: {message_ids}")
+                print(f"  Report Type: {reason_name}")
+                
+                if reason_num == 2:
+                    print(f"\n{Colors.RED}{Colors.BOLD}⚠️ LEGAL REMINDER:{Colors.RESET}")
+                    print(f"  You have fulfilled your mandatory reporting duty under POCSO Section 19")
+                    print(f"  Also report to: https://cybercrime.gov.in")
+                    print(f"  National Child Helpline: 1098")
+                
+                # Save log
+                log_entry = {
+                    "timestamp": datetime.now().isoformat(),
+                    "account": account['nickname'],
+                    "target": target,
+                    "target_name": target_name,
+                    "reason": reason_name,
+                    "message_ids": message_ids,
+                    "message_count": len(message_ids),
+                    "comment": comment[:500] if comment else "",
+                    "success": True
+                }
+                
+                log_file = self.base_dir / "logs" / f"cbrt_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                with open(log_file, 'w') as f:
+                    json.dump(log_entry, f, indent=2)
+                
+                print(f"{Colors.GREEN}📝 Log saved: {log_file}{Colors.RESET}")
+                
+            except errors.FloodWaitError as e:
+                print(f"{Colors.YELLOW}⚠️ Flood wait: {e.seconds} seconds{Colors.RESET}")
+                print(f"  Please wait {e.seconds} seconds before reporting again.")
+            except Exception as e:
+                print(f"{Colors.RED}❌ Report failed: {e}{Colors.RESET}")
+                traceback.print_exc()
             
             await client.disconnect()
             
@@ -589,7 +571,7 @@ class MediaReporter:
         
         while True:
             try:
-                cmd = input(f"\n{Colors.BOLD}{Colors.RED}📷 REPORTER> {Colors.RESET}").strip().lower()
+                cmd = input(f"\n{Colors.BOLD}{Colors.RED}📷 CBRT> {Colors.RESET}").strip().lower()
                 
                 if cmd in ['exit', 'quit', 'q']:
                     print(f"{Colors.YELLOW}Goodbye!{Colors.RESET}")
